@@ -1,0 +1,97 @@
+version: "3"
+services:
+  node:
+    build:
+      context: express-web
+      dockerfile: Dockerfile
+    ports:
+      - 8081:3000
+    environment:
+      - APM_ENABLE=true
+      - APM_SERVICE_NAME=express-web
+      - APM_API_KEY=Y0lNY0Izd0JEaXNLaVdtcnN3TEs6S2FHWm1Pc2VSWS1oWUhkN0xLX0VFdw==
+      - APM_URL=grpc://apm-server:8200
+  java:
+    build:
+      context: spring-petclinic-kotlin
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=petclinic
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://apm-server:8200
+      - OTEL_EXPORTER_OTLP_HEADERS=Authorization=ApiKey Y0lNY0Izd0JEaXNLaVdtcnN3TEs6S2FHWm1Pc2VSWS1oWUhkN0xLX0VFdw==
+      - OTEL_LOG_LEVEL=debug
+      # - ELASTIC_APM_SERVICE_NAME=my-petclinic
+      # - ELASTIC_APM_APPLICATION_PACKAGES=nextdrive
+      # - ELASTIC_APM_SERVER_URL=http://apm-server:8200
+      # - ELASTIC_APM_API_KEY=T2F6UHFuc0J5ejdia2dqSWg0aTE6VEFZdnVWNG5TMWlFNmRxTnI5aE9rZw==
+  mongo:
+    image: mongo
+    restart: always
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:7.13.1
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
+    cap_drop: ["ALL"]
+    ports:
+    - 8200:8200
+    command: >
+       apm-server -e
+         -E apm-server.rum.enabled=true
+         -E setup.kibana.host=kibana:5601
+         -E setup.template.settings.index.number_of_replicas=0
+         -E apm-server.kibana.enabled=true
+         -E apm-server.auth.api_key.enabled=true 
+         -E apm-server.auth.api_key.limit=50
+         -E apm-server.kibana.host=kibana:5601
+         -E apm-server.kibana.username=elastic
+         -E apm-server.kibana.password=elasticpassword
+         -E output.elasticsearch.hosts=https://192.168.15.8:9200
+         -E output.elasticsearch.username=elastic
+         -E output.elasticsearch.password=elasticpassword
+         -E output.elasticsearch.ssl.certificate_authorities=["/usr/share/elasticsearch/config/certificates/ca/ca.crt"]
+    volumes:
+    - ./certs/certs:/usr/share/elasticsearch/config/certificates
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.1
+    environment:
+    - bootstrap.memory_lock=true
+    - cluster.name=docker-cluster
+    - cluster.routing.allocation.disk.threshold_enabled=false
+    - discovery.type=single-node
+    - ES_JAVA_OPTS=-Xms512M -Xmx512M
+    - ELASTIC_PASSWORD=elasticpassword
+    - xpack.security.enabled=true
+    - xpack.security.http.ssl.enabled=true
+    - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certificates/es01/es01.key
+    - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+    - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certificates/es01/es01.crt
+    - xpack.security.transport.ssl.enabled=true 
+    - xpack.security.transport.ssl.verification_mode=certificate 
+    - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certificates/ca/ca.crt
+    - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certificates/es01/es01.crt
+    - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certificates/es01/es01.key
+    ulimits:
+      memlock:
+        hard: -1
+        soft: -1
+    volumes:
+    - ./certs/certs:/usr/share/elasticsearch/config/certificates
+    ports:
+    - 9200:9200
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.13.1
+    environment:
+      ELASTICSEARCH_URL: https://192.168.15.8:9200
+      ELASTICSEARCH_HOSTS: https://192.168.15.8:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: elasticpassword
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: /usr/share/elasticsearch/config/certificates/ca/ca.crt
+      # SERVER_SSL_ENABLED: "true"
+      # SERVER_SSL_KEY: /usr/share/elasticsearch/config/certificates/es01/es01.key
+      # SERVER_SSL_CERTIFICATE: /usr/share/elasticsearch/config/certificates/es01/es01.crt
+    volumes:
+    - ./certs/certs:/usr/share/elasticsearch/config/certificates
+    ports:
+    - 5601:5601

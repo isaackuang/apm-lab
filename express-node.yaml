@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: express-node
+  name: express-node
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: express-node
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        proxy.istio.io/config: |
+          holdApplicationUntilProxyStarts: true
+          terminationDrainDuration": 185s
+      creationTimestamp: null
+      labels:
+        app: express-node
+        version: v0.8
+    spec:
+      containers:
+      - image: isaackuang/express-node:grace
+        imagePullPolicy: Always
+        name: express-node
+        env:
+        - name: APM_ENABLE
+          value: 'false'
+        - name: APM_SERVICE_NAME
+          value: 'express-node'
+        - name: APM_URL
+          value: 'grpc://apm-grpc-apm-server.logging:8200'
+        - name: APM_API_KEY
+          value: 'QUpyZHJuc0JwbUY0elZ3bWxUYVI6MUcyMUpsT09RTGlBX1U4enp2WHNSQQ=='
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 130
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: express-node
+spec:
+  selector:
+    app: express-node
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

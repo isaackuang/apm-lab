@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: petclinic
+  name: petclinic
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: petclinic
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: petclinic
+    spec:
+      containers:
+      - image: isaackuang/petclinic:kotlin
+        imagePullPolicy: Always
+        name: petclinic
+        env:
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.name=petclinic
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: 'http://apm-server-grpc-apm-server.logging:8200'
+        - name: OTEL_EXPORTER_OTLP_HEADERS
+          value: Authorization=ApiKey QUpyZHJuc0JwbUY0elZ3bWxUYVI6MUcyMUpsT09RTGlBX1U4enp2WHNSQQ==
+        - name: OTEL_LOG_LEVEL
+          value: debug
+        - name: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
+          value: http
+        - name: OTEL_EXPORTER_OTLP_METRICS_PROTOCOL
+          value: http
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
