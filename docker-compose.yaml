@@ -1,16 +1,16 @@
 version: "3"
 services:
-  # node:
-  #   build:
-  #     context: express-web
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - 8081:3000
-  #   environment:
-  #     - APM_ENABLE=true
-  #     - APM_SERVICE_NAME=express-web
-  #     - APM_API_KEY=Y0lNY0Izd0JEaXNLaVdtcnN3TEs6S2FHWm1Pc2VSWS1oWUhkN0xLX0VFdw==
-  #     - APM_URL=grpc://apm-server:8200
+  node:
+    build:
+      context: express-web
+      dockerfile: Dockerfile
+    ports:
+      - 8081:3000
+    environment:
+      - APM_ENABLE=true
+      - APM_SERVICE_NAME=express-web
+      - APM_URL=http://otel-collector:55680
+      - COLLECTOR_OTLP_ENABLED=true
   java:
     build:
       context: spring-petclinic-kotlin
@@ -19,6 +19,7 @@ services:
       - 8080:8080
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=service.name=petclinic
+      - OTLP=otel-collector
       - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:55680
       - OTEL_EXPORTER_OTLP_HEADERS=Authorization=ApiKey Y0lNY0Izd0JEaXNLaVdtcnN3TEs6S2FHWm1Pc2VSWS1oWUhkN0xLX0VFdw==
@@ -29,7 +30,7 @@ services:
     container_name: data-prepper
     image: opensearchproject/data-prepper:2
     volumes:
-      - ./data-prepper:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
       - ./cert/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
@@ -76,4 +77,3 @@ services:
       - "55680:55680"
     depends_on:
       - data-prepper
-

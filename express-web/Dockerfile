@@ -1,4 +1,4 @@
-FROM node:10
+FROM node:18
 
 RUN npm install -g pm2
 
@@ -9,4 +9,4 @@ WORKDIR /app
 RUN npm install
 
 # ENTRYPOINT ["pm2", "--no-daemon", "start", "app.js"]
-ENTRYPOINT ["node", "app.js"]
+ENTRYPOINT ["node", "--require", "./tracer.js", "app.js"]
