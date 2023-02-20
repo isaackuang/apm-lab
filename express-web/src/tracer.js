@@ -1,47 +1,81 @@
-"use strict";
+const { diag, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api');
+const opentelemetry = require('@opentelemetry/sdk-node');
 
-const {
-	BasicTracerProvider,
-	ConsoleSpanExporter,
-	SimpleSpanProcessor,
-} = require("@opentelemetry/tracing");
-const { CollectorTraceExporter } = require("@opentelemetry/exporter-collector");
+const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
+const { registerInstrumentations } = require("@opentelemetry/instrumentation");
+const { ExpressInstrumentation } = require("@opentelemetry/instrumentation-express");
+const { HttpInstrumentation } = require("@opentelemetry/instrumentation-http");
+
 const { Resource } = require("@opentelemetry/resources");
 const {
-	SemanticResourceAttributes,
+  SemanticResourceAttributes,
 } = require("@opentelemetry/semantic-conventions");
+const { SimpleSpanProcessor } = require("@opentelemetry/sdk-trace-base");
+const grpc = require("@grpc/grpc-js");
+const { CollectorTraceExporter } = require("@opentelemetry/exporter-collector-grpc");
 
-const opentelemetry = require("@opentelemetry/sdk-node");
-const {
-	getNodeAutoInstrumentations,
-} = require("@opentelemetry/auto-instrumentations-node");
-const exporter = new CollectorTraceExporter({});
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 
-const provider = new BasicTracerProvider({
-	resource: new Resource({
-		[SemanticResourceAttributes.SERVICE_NAME]: "test",
-	}),
+const apmConfig = {
+	url: process.env.APM_URL,
+	serviceName: process.env.APM_SERVICE_NAME,
+	podId: process.env.POD_NAME
+}
+
+const provider = new NodeTracerProvider({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: apmConfig.serviceName,
+    [SemanticResourceAttributes.K8S_POD_UID]: apmConfig.podId,
+  }),
 });
+
+registerInstrumentations({
+  instrumentations: [
+    new HttpInstrumentation(),
+    new ExpressInstrumentation({
+      ignoreLayersType: [new RegExp("middleware.*")],
+    }),
+  ],
+  tracerProvider: provider,
+});
+
+
+
+var meta = new grpc.Metadata();
+meta.add("x-sls-otel-project", apmConfig.serviceName);
+const collectorOptions = {
+  url: apmConfig.url,
+  metadata: meta,
+};
+
+const exporter = new CollectorTraceExporter(collectorOptions);
+
 provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-// Uncomment to see spans inside console
-// provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
+
+
 provider.register();
-const sdk = new opentelemetry.NodeSDK({
-	traceExporter: new opentelemetry.tracing.ConsoleSpanExporter(),
-	instrumentations: [getNodeAutoInstrumentations()],
-});
 
-sdk
-	.start()
-	.then(() => {
-		console.log("Tracing initialized");
-	})
-	.catch((error) => console.log("Error initializing tracing", error));
 
-process.on("SIGTERM", () => {
-	sdk
-		.shutdown()
-		.then(() => console.log("Tracing terminated"))
-		.catch((error) => console.log("Error terminating tracing", error))
-		.finally(() => process.exit(0));
+// SDK configuration and start up
+const sdk = new opentelemetry.NodeSDK({ exporter });
+
+(async () => {
+  try {
+    await sdk.start();
+    console.log('Tracing started.');
+  } catch (error) {
+    console.error(error);
+  }
+})();
+
+// For local development to stop the tracing using Control+c
+process.on('SIGINT', async () => {
+  try {
+    await sdk.shutdown();
+    console.log('Tracing finished.');
+  } catch (error) {
+    console.error(error);
+  } finally {
+    process.exit(0);
+  }
 });
