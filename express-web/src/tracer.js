@@ -1,5 +1,11 @@
+const opentelemetry = require("@opentelemetry/sdk-node");
 const { diag, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api');
-const opentelemetry = require('@opentelemetry/sdk-node');
+
+// For troubleshooting, set the log level to DiagLogLevel.DEBUG
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+
+
+const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");
 
 const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node");
 const { registerInstrumentations } = require("@opentelemetry/instrumentation");
@@ -22,24 +28,22 @@ const apmConfig = {
 	podId: process.env.POD_NAME
 }
 
-const provider = new NodeTracerProvider({
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: apmConfig.serviceName,
-    [SemanticResourceAttributes.K8S_POD_UID]: apmConfig.podId,
-  }),
-});
+// const provider = new NodeTracerProvider({
+//   resource: new Resource({
+//     [SemanticResourceAttributes.SERVICE_NAME]: apmConfig.serviceName,
+//     [SemanticResourceAttributes.K8S_POD_UID]: apmConfig.podId,
+//   }),
+// });
 
-registerInstrumentations({
-  instrumentations: [
-    new HttpInstrumentation(),
-    new ExpressInstrumentation({
-      ignoreLayersType: [new RegExp("middleware.*")],
-    }),
-  ],
-  tracerProvider: provider,
-});
-
-
+// registerInstrumentations({
+//   instrumentations: [
+//     new HttpInstrumentation(),
+//     new ExpressInstrumentation({
+//       ignoreLayersType: [new RegExp("middleware.*")],
+//     }),
+//   ],
+//   tracerProvider: provider,
+// });
 
 var meta = new grpc.Metadata();
 meta.add("x-sls-otel-project", apmConfig.serviceName);
@@ -50,14 +54,18 @@ const collectorOptions = {
 
 const exporter = new CollectorTraceExporter(collectorOptions);
 
-provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
+// provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
 
 
-provider.register();
+// provider.register();
 
 
-// SDK configuration and start up
-const sdk = new opentelemetry.NodeSDK({ exporter });
+// // SDK configuration and start up
+const sdk = new opentelemetry.NodeSDK({
+  traceExporter: exporter,
+  instrumentations: [getNodeAutoInstrumentations()]
+});
+
 
 (async () => {
   try {
