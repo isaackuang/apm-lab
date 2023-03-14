@@ -1,9 +1,11 @@
 
 console.log(process.env.APM_ENABLE)
 
+let trace;
+
 if (process.env.APM_ENABLE == 'true') {
     console.log("Enable tracing")
-    require('./tracer');
+    trace = require('./tracer');
 }
 
 var express = require('express');
@@ -24,14 +26,36 @@ app.get('/sleep', function (req, res) {
   }, 1000)
 });
 
-app.get('/error', function (req, res) {
-  throw new Error('Parameter is not a number!')
-  res.send("Error!!!.")
+app.get('/pet', function (req, res) {
+  const http = require('http');
+  let result
+  http.get('http://java:8080/oups', (res) => {
+    result = `Got response: ${res.statusCode}`
+    // consume response body
+    res.resume();
+  }).on('error', (e) => {
+    result = `Got error: ${e.message}`
+  });
+  res.send(result)
 });
 
-app.listen(3000, function () {
+app.get('/error', function (req, res) {
+  throw new Error('Parameter is not a number!')
+});
+
+app.use((err, req, res, next) => {
+  if (trace) {
+    const activeSpan = trace.getActiveSpan();
+    activeSpan.recordException(err);
+  }
+  res.status(500).send('Something broken!')
+})
+
+const server = app.listen(3000, function () {
   console.log('Example app listening on port 3000!');
 });
+
+server.keepAliveTimeout = 1000
 
 process.on('SIGTERM', shutDown);
 process.on('SIGINT', shutDown);

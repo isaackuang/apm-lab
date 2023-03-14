@@ -1,18 +1,18 @@
 const opentelemetry = require("@opentelemetry/sdk-node");
-const { diag, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api');
+const { diag, trace, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api');
 
 // For troubleshooting, set the log level to DiagLogLevel.DEBUG
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
 
 
-// const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");
+
 
 // const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node")
 
 const { ExpressInstrumentation } = require("@opentelemetry/instrumentation-express");
 const { HttpInstrumentation } = require("@opentelemetry/instrumentation-http");
 const { PgInstrumentation } = require('@opentelemetry/instrumentation-pg');
-
+const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");
 
 const { Resource } = require("@opentelemetry/resources");
 const {
@@ -29,7 +29,6 @@ const apmConfig = {
 	serviceName: process.env.APM_SERVICE_NAME,
 	podId: process.env.POD_NAME
 }
-
 
 var meta = new grpc.Metadata();
 meta.add("x-sls-otel-project", apmConfig.serviceName);
@@ -48,9 +47,8 @@ const traceResource = new Resource({
 const traceInstrumentations = [
   new HttpInstrumentation(),
   new PgInstrumentation(),
-  new ExpressInstrumentation({
-        ignoreLayersType: [new RegExp("middleware.*")],
-    }),
+  new ExpressInstrumentation(),
+  new getNodeAutoInstrumentations()
 ]
 
 // // SDK configuration and start up
@@ -80,3 +78,5 @@ process.on('SIGINT', async () => {
     process.exit(0);
   }
 });
+
+module.exports = trace;

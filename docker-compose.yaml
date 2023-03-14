@@ -76,4 +76,44 @@ services:
     ports:
       - "55680:55680"
     depends_on:
+      - kafka
+  otel-receiver:
+    image: otel/opentelemetry-collector:0.64.1
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./opentelemetry-receiver/otel-collector-config.yml:/etc/otel-collector-config.yml
+      - ./cert/data-prepper.crt:/etc/data-prepper.crt
+    depends_on:
       - data-prepper
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    ports:
+      - "2181:2181"
+    volumes:
+      - ./zookeeper_data:/bitnami
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka:
+    image: docker.io/bitnami/kafka:3.1
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./data/kafka:/bitnami
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+  akhq:
+    # build:
+    #   context: .
+    image: tchiotludo/akhq
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka:9092"
+    ports:
+      - 8085:8080
