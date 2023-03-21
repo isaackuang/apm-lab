@@ -4,9 +4,6 @@ const { diag, trace, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry
 // For troubleshooting, set the log level to DiagLogLevel.DEBUG
 diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
 
-
-
-
 // const { NodeTracerProvider } = require("@opentelemetry/sdk-trace-node")
 
 const { ExpressInstrumentation } = require("@opentelemetry/instrumentation-express");

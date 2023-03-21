@@ -8,8 +8,9 @@ services:
       - 8081:3000
     environment:
       - APM_ENABLE=true
+      - APM_TYPE=otel
       - APM_SERVICE_NAME=express-web
-      - APM_URL=http://otel-collector:55680
+      - APM_URL=http://192.168.15.49:55680
       - COLLECTOR_OTLP_ENABLED=true
   java:
     build:

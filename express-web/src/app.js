@@ -1,11 +1,13 @@
 
-console.log(process.env.APM_ENABLE)
+// console.log(process.env.APM_ENABLE)
 
 let trace;
 
 if (process.env.APM_ENABLE == 'true') {
+  if (process.env.APM_TYPE == 'otel') {
     console.log("Enable tracing")
     trace = require('./tracer');
+  }
 }
 
 var express = require('express');
