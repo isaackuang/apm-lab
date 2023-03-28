@@ -1,0 +1,37 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "node dist/app.js",
+    "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/app.js\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.8.8",
+    "@opentelemetry/api": "^1.4.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.36.2",
+    "@opentelemetry/exporter-collector": "^0.25.0",
+    "@opentelemetry/exporter-collector-grpc": "^0.25.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.35.1",
+    "@opentelemetry/instrumentation": "^0.35.1",
+    "@opentelemetry/instrumentation-express": "^0.32.1",
+    "@opentelemetry/instrumentation-http": "^0.35.1",
+    "@opentelemetry/node": "^0.24.0",
+    "@opentelemetry/resources": "^1.9.1",
+    "@opentelemetry/sdk-node": "^0.35.1",
+    "@opentelemetry/sdk-trace-node": "^1.9.1",
+    "@opentelemetry/semantic-conventions": "^1.9.1",
+    "@opentelemetry/tracing": "^0.24.0",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.15.10",
+    "concurrently": "^7.6.0",
+    "nodemon": "^2.0.22",
+    "typescript": "^5.0.2"
+  }
+}
